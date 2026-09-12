@@ -62,25 +62,17 @@ export default function Home() {
   const macd = data?.technical_indicators?.macd;
   const boll = data?.technical_indicators?.bollinger;
 
-  const rsiTone =
-    rsi == null
-      ? "neutral"
-      : rsi >= 70
-      ? "overbought"
-      : rsi <= 30
-      ? "oversold"
-      : "neutral";
-
   const rsiColor =
-    rsiTone === "overbought"
+    rsi == null
+      ? "#6b7280"
+      : rsi >= 70
       ? "#f87171"
-      : rsiTone === "oversold"
+      : rsi <= 30
       ? "#4ade80"
       : "#fbbf24";
 
   return (
-    <main className="min-h-screen bg-[#08080a] text-white antialiased selection:bg-white/20">
-      {/* Subtle radial glow */}
+    <main className="min-h-screen bg-[#08080a] text-white antialiased">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 opacity-40"
@@ -91,13 +83,12 @@ export default function Home() {
       />
 
       <div className="relative mx-auto max-w-3xl px-6 py-14">
-        {/* Header */}
         <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">
               Stock Dashboard
             </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
               Live market data
             </h1>
           </div>
@@ -107,25 +98,23 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Search symbol…"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:bg-white/[0.05] sm:w-48"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 sm:w-48"
             />
             <button
               type="submit"
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.98]"
+              className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
             >
               Analyze
             </button>
           </form>
         </header>
 
-        {/* Error */}
         {error && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
-        {/* Main card */}
         {loading && !data && (
           <div className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-10 text-center text-white/40">
             Loading…
@@ -134,8 +123,7 @@ export default function Home() {
 
         {data && (
           <>
-            <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-8 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-sm">
-              {/* Ticker row */}
+            <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-8">
               <div className="flex items-center gap-3">
                 <span className="text-3xl font-semibold tracking-tight">
                   {data.symbol}
@@ -145,7 +133,6 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Price + change */}
               <div className="mt-6 flex flex-wrap items-end gap-x-6 gap-y-2">
                 <div
                   className="text-[64px] font-semibold leading-none tracking-[-0.04em]"
@@ -164,33 +151,23 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="mt-8 h-px w-full bg-white/[0.06]" />
 
-              {/* Stats strip */}
               <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
                 <Stat
                   label="RSI (14)"
                   value={rsi != null ? rsi.toFixed(1) : "—"}
-                  tone={rsi != null ? rsiTone : undefined}
-                  color={rsi != null ? rsiColor : undefined}
+                  color={rsiColor}
                 />
                 <Stat
                   label="MACD"
                   value={macd?.line != null ? macd.line.toFixed(2) : "—"}
-                  tone={
-                    macd?.histogram != null
-                      ? macd.histogram >= 0
-                        ? "bullish"
-                        : "bearish"
-                      : undefined
-                  }
                   color={
                     macd?.histogram != null
                       ? macd.histogram >= 0
                         ? "#4ade80"
                         : "#f87171"
-                      : undefined
+                      : "#6b7280"
                   }
                 />
                 <Stat
@@ -204,7 +181,6 @@ export default function Home() {
               </div>
             </section>
 
-            {/* AI section — only when provider is live */}
             {data.ai_analysis && data.provider && data.provider !== "Unavailable" && (
               <section className="mt-6 rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
                 <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">
@@ -217,7 +193,6 @@ export default function Home() {
               </section>
             )}
 
-            {/* Footer */}
             <div className="mt-8 flex items-center justify-between text-[11px] text-white/30">
               <span>Auto-refresh · 60s</span>
               <button
@@ -238,12 +213,10 @@ export default function Home() {
 function Stat({
   label,
   value,
-  tone,
   color,
 }: {
   label: string;
   value: string;
-  tone?: string;
   color?: string;
 }) {
   return (
@@ -260,14 +233,6 @@ function Stat({
       >
         {value}
       </div>
-      {tone && (
-        <div
-          className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em]"
-          style={{ color: color ?? "#6b7280" }}
-        >
-          {tone}
-        </div>
-      )}
     </div>
   );
 }
