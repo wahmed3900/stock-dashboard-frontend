@@ -16,9 +16,7 @@ type StockData = {
   provider?: string;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://stock-dashboard-backend-634072894074.us-west4.run.app";
+const API_BASE = "/api/backend";
 
 export default function Home() {
   const [symbol, setSymbol] = useState("AAPL");
@@ -31,7 +29,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/stock/${sym.toUpperCase()}`);
+      const res = await fetch(`${API_BASE}/stock/${sym.toUpperCase()}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || `HTTP ${res.status}`);
       setData(json);
