@@ -191,6 +191,21 @@ export default function Home() {
               </section>
             )}
 
+            <section className="mt-6 rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+              <div className="mb-4 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">
+                Project demo
+              </div>
+              <div className="mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-2xl">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube.com/embed/gQpinwa-Gkk"
+                  title="AI Stock Market Analyzer Demo"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </section>
+
             <div className="mt-8 flex items-center justify-between text-[11px] text-white/30">
               <span>Auto-refresh · 60s</span>
               <button

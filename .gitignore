@@ -5,3 +5,4 @@ node_modules/
 *.log
 app/page.tsx.bak
 app/page.tsx.before-chart
+app/page.tsx.before-video
