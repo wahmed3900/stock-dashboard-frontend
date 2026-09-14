@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AuthButton from "@/components/AuthButton";
 
 type StockData = {
   symbol: string;
@@ -90,6 +91,8 @@ export default function Home() {
               Live market data
             </h1>
           </div>
+
+          <AuthButton />
 
           <form onSubmit={submit} className="flex w-full gap-2 sm:w-auto">
             <input
