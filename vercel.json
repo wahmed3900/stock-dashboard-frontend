@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/auth/:path*",
-      "destination": "https://stock-bull-bearish.onrender.com/api/auth/:path*"
-    }
-  ]
-}
