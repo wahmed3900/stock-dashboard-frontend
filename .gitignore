@@ -3,11 +3,9 @@ node_modules/
 .env.local
 .DS_Store
 *.log
-app/page.tsx.bak
-app/page.tsx.before-chart
-app/page.tsx.before-video
+
 .autho
 .serviceside
 .env*
-1clear
-route.ts*
+≈
+.env.local
