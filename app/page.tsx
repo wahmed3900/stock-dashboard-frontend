@@ -3,26 +3,62 @@
 import { useEffect, useState } from "react";
 import AuthButton from "@/components/AuthButton";
 
-type StockData = {
-  symbol: string;
-  current_price: number;
-  change_pct: number;
-  source: string;
-  technical_indicators?: {
-    rsi?: number;
-    macd?: { line?: number; signal?: number; histogram?: number };
-    bollinger?: { upper?: number; mid?: number; lower?: number };
-  };
-  ai_analysis?: string;
-  provider?: string;
-};
-
 const API_BASE = "/api/backend";
 
-export default function Home() {
+type View = {
+  symbol: string;
+  price?: number;
+  change?: number;
+  source?: string;
+  rsi?: number;
+  macd?: number;
+  macdHist?: number;
+  upper?: number;
+  lower?: number;
+  insight?: string;
+};
+
+// Accept numbers or numeric strings; return the first usable value.
+function num(...vals: unknown[]): number | undefined {
+  for (const v of vals) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() !== "" && Number.isFinite(+v)) return +v;
+  }
+  return undefined;
+}
+
+// Map whatever the backend sends onto the fields this page shows.
+// Covers the common naming variants so a small backend difference
+// doesn't turn every card into a dash.
+function normalize(json: any, symbol: string): View {
+  const root = json?.data ?? json?.quote ?? json?.result ?? json ?? {};
+  const ti = root.technical_indicators ?? root.indicators ?? root.technicals ?? {};
+  const macd = ti.macd ?? root.macd;
+  const boll = ti.bollinger ?? ti.bollinger_bands ?? ti.bbands ?? root.bollinger ?? {};
+
+  return {
+    symbol: root.symbol ?? root.ticker ?? symbol,
+    price: num(root.current_price, root.price, root.close, root.last, root.regularMarketPrice),
+    change: num(root.change_pct, root.change_percent, root.changePercent, root.percent_change, root.pct_change),
+    source: root.source ?? root.provider,
+    rsi: num(ti.rsi, ti.rsi_14, ti.RSI, root.rsi),
+    macd: num(typeof macd === "object" ? macd?.line ?? macd?.macd ?? macd?.value : macd, ti.macd_line),
+    macdHist: num(typeof macd === "object" ? macd?.histogram ?? macd?.hist : undefined, ti.macd_histogram),
+    upper: num(boll.upper, boll.upper_band, ti.bb_upper, ti.upper_band, root.bb_upper),
+    lower: num(boll.lower, boll.lower_band, ti.bb_lower, ti.lower_band, root.bb_lower),
+    insight: [root.ai_analysis, root.analysis, root.verdict, root.summary].find(
+      (s) => typeof s === "string" && s.trim()
+    ),
+  };
+}
+
+const money = (n?: number) => (n != null ? `$${n.toFixed(2)}` : "—");
+
+export default function StockDashboard() {
   const [symbol, setSymbol] = useState("AAPL");
   const [input, setInput] = useState("AAPL");
-  const [data, setData] = useState<StockData | null>(null);
+  const [view, setView] = useState<View | null>(null);
+  const [raw, setRaw] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,11 +68,12 @@ export default function Home() {
     try {
       const res = await fetch(`${API_BASE}/stock/${sym.toUpperCase()}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || `HTTP ${res.status}`);
-      setData(json);
+      if (!res.ok) throw new Error(json?.detail || json?.error || `Request failed with status ${res.status}`);
+      setRaw(json);
+      setView(normalize(json, sym.toUpperCase()));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
-      setData(null);
+      setError(e instanceof Error ? e.message : "Couldn't load this ticker.");
+      setView(null);
     } finally {
       setLoading(false);
     }
@@ -54,201 +91,134 @@ export default function Home() {
     if (next) setSymbol(next);
   }
 
-  const price = data?.current_price;
-  const change = data?.change_pct ?? 0;
-  const isUp = change >= 0;
-  const rsi = data?.technical_indicators?.rsi;
-  const macd = data?.technical_indicators?.macd;
-  const boll = data?.technical_indicators?.bollinger;
-
-  const rsiColor =
-    rsi == null
-      ? "#6b7280"
-      : rsi >= 70
-      ? "#f87171"
-      : rsi <= 30
-      ? "#4ade80"
-      : "#fbbf24";
+  const up = (view?.change ?? 0) >= 0;
+  const missing =
+    view && [view.price, view.rsi, view.macd, view.upper, view.lower].some((v) => v == null);
 
   return (
-    <main className="min-h-screen bg-[#08080a] text-white antialiased">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-40"
-        style={{
-          background:
-            "radial-gradient(600px 400px at 50% -10%, rgba(99,91,255,0.15), transparent 70%)",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-3xl px-6 py-14">
-        <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">
-              Stock Dashboard
-            </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-              Live market data
-            </h1>
-          </div>
-
+    <div className="flex min-h-screen bg-[#09090b] text-[#f4f4f5] font-sans antialiased">
+      <aside className="hidden md:flex flex-col w-64 border-r border-[#1e1e24] p-6 space-y-6">
+        <span className="px-2 text-xl font-bold tracking-tight text-white">🗠 StockAI</span>
+        <nav className="flex-1 space-y-1">
+          <a href="/" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-[#18181b] text-white">
+            Dashboard
+          </a>
+        </nav>
+        <div className="pt-4 border-t border-[#1e1e24] px-2">
           <AuthButton />
+        </div>
+      </aside>
 
-          <form onSubmit={submit} className="flex w-full gap-2 sm:w-auto">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex h-16 items-center justify-between gap-4 px-6 border-b border-[#1e1e24]">
+          <span className="text-sm font-medium text-[#71717a]">Live market data</span>
+          <form onSubmit={submit} className="flex items-center space-x-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Search symbol…"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 sm:w-48"
+              placeholder="Search ticker (e.g. AAPL)"
+              aria-label="Ticker symbol"
+              className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 w-40 sm:w-48"
             />
             <button
               type="submit"
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+              className="bg-white text-black text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               Analyze
             </button>
           </form>
         </header>
 
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
-        )}
-
-        {loading && !data && (
-          <div className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-10 text-center text-white/40">
-            Loading…
-          </div>
-        )}
-
-        {data && (
-          <>
-            <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-8">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-semibold tracking-tight">
-                  {data.symbol}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/50">
-                  {data.source}
-                </span>
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-end gap-x-6 gap-y-2">
-                <div
-                  className="text-[64px] font-semibold leading-none tracking-[-0.04em]"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
-                >
-                  {price != null ? `$${price.toFixed(2)}` : "—"}
-                </div>
-                <div
-                  className="mb-2 inline-flex items-center gap-1.5 text-lg font-medium"
-                  style={{ color: isUp ? "#4ade80" : "#f87171" }}
-                >
-                  <span className="text-sm">{isUp ? "▲" : "▼"}</span>
-                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {Math.abs(change).toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-8 h-px w-full bg-white/[0.06]" />
-
-              <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
-                <Stat
-                  label="RSI (14)"
-                  value={rsi != null ? rsi.toFixed(1) : "—"}
-                  color={rsiColor}
-                />
-                <Stat
-                  label="MACD"
-                  value={macd?.line != null ? macd.line.toFixed(2) : "—"}
-                  color={
-                    macd?.histogram != null
-                      ? macd.histogram >= 0
-                        ? "#4ade80"
-                        : "#f87171"
-                      : "#6b7280"
-                  }
-                />
-                <Stat
-                  label="Upper band"
-                  value={boll?.upper != null ? `$${boll.upper.toFixed(2)}` : "—"}
-                />
-                <Stat
-                  label="Lower band"
-                  value={boll?.lower != null ? `$${boll.lower.toFixed(2)}` : "—"}
-                />
-              </div>
-            </section>
-
-            {data.ai_analysis && data.provider && data.provider !== "Unavailable" && (
-              <section className="mt-6 rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
-                <div className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  AI Analysis · {data.provider}
-                </div>
-                <p className="text-[15px] leading-relaxed text-white/80">
-                  {data.ai_analysis}
-                </p>
-              </section>
-            )}
-
-            <section className="mt-6 rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
-              <div className="mb-4 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">
-                Project demo
-              </div>
-              <div className="mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-2xl">
-                <iframe
-                  className="h-full w-full"
-                  src="https://www.youtube.com/embed/gQpinwa-Gkk"
-                  title="AI Stock Market Analyzer Demo"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            </section>
-
-            <div className="mt-8 flex items-center justify-between text-[11px] text-white/30">
-              <span>Auto-refresh · 60s</span>
-              <button
-                onClick={() => load(symbol)}
-                disabled={loading}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-white/60 transition hover:border-white/20 hover:text-white disabled:opacity-40"
-              >
-                {loading ? "Refreshing…" : "Refresh"}
-              </button>
+        <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
+          {error && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
+              {error} Check the ticker and try again.
             </div>
-          </>
-        )}
-      </div>
-    </main>
-  );
-}
+          )}
 
-function Stat({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div>
-      <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-white/35">
-        {label}
-      </div>
-      <div
-        className="mt-1.5 text-xl font-semibold"
-        style={{
-          color: color ?? "#f5f5f7",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {value}
+          {loading && !view && (
+            <div className="rounded-2xl border border-[#1e1e24] p-10 text-center text-sm text-[#71717a]">
+              Loading {symbol}…
+            </div>
+          )}
+
+          {view && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 border border-[#1e1e24] rounded-2xl p-6 flex flex-col">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <h2 className="text-3xl font-bold tracking-tight text-white tabular-nums">
+                        {money(view.price)}
+                      </h2>
+                      <p
+                        className={`text-sm font-medium flex items-center gap-1 tabular-nums ${
+                          up ? "text-emerald-500" : "text-rose-500"
+                        }`}
+                      >
+                        {view.change != null
+                          ? `${up ? "▲ +" : "▼ "}${view.change.toFixed(2)}%`
+                          : "—"}
+                        <span className="text-[#71717a] font-normal">({view.symbol})</span>
+                      </p>
+                    </div>
+                    {view.source && (
+                      <span className="bg-[#14532d] text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                        {view.source}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-6 flex-1 rounded-xl bg-[#18181b] border border-[#27272a] p-4 text-sm leading-relaxed text-[#d4d4d8]">
+                    <span className="font-semibold text-white">AI insight: </span>
+                    {view.insight ?? "No analysis returned for this ticker yet."}
+                  </div>
+                </div>
+
+                <div className="border border-[#1e1e24] rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-[#e4e4e7] mb-1">Project demo</h3>
+                  <p className="text-xs text-[#71717a] mb-4">How the analyzer works</p>
+                  <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-zinc-900">
+                    <iframe
+                      className="h-full w-full"
+                      src="https://www.youtube.com/embed/gQpinwa-Gkk"
+                      title="AI Stock Market Analyzer demo"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Metric label="RSI (14)" value={view.rsi != null ? view.rsi.toFixed(1) : "—"}
+                  tone={view.rsi == null ? "" : view.rsi >= 70 ? "text-rose-500" : view.rsi <= 30 ? "text-emerald-400" : ""} />
+                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(2) : "—"}
+                  tone={view.macdHist == null ? "" : view.macdHist >= 0 ? "text-emerald-400" : "text-rose-500"} />
+                <Metric label="Upper band" value={money(view.upper)} tone="text-[#f43f5e]" />
+                <Metric label="Lower band" value={money(view.lower)} tone="text-emerald-400" />
+              </div>
+
+              {missing && (
+                <details className="rounded-xl border border-[#27272a] p-4 text-xs text-[#a1a1aa]">
+                  <summary className="cursor-pointer text-[#e4e4e7]">
+                    Some values are missing. Show the raw backend response
+                  </summary>
+                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(raw, null, 2)}</pre>
+                </details>
+              )}
+            </>
+          )}
+        </main>
       </div>
     </div>
   );
+}
+
+function Metric({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="border border-[#1e1e24] p-4 rounded-xl">
+      <p className="text-xs text-[#71717a] font-medium">{label}</p>
+      <p className={`text-lg font-semibold mt-1 tabular-nums ${tone || "text-white"}`}>{value}</p>
+    </div>
+  )
 }
