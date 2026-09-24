@@ -86,6 +86,7 @@ const ASSET_CLASSES = [
 const ALIASES: Record<string, string> = {
   EUR: "EURUSD=X", GBP: "GBPUSD=X", JPY: "JPY=X", CAD: "CAD=X", AUD: "AUDUSD=X",
   CHF: "CHF=X", INR: "INR=X", CNY: "CNY=X", MXN: "MXN=X",
+  USD: "DX-Y.NYB", DXY: "DX-Y.NYB",
   BTC: "BTC-USD", BITCOIN: "BTC-USD", ETH: "ETH-USD", ETHEREUM: "ETH-USD",
   SOL: "SOL-USD", SOLANA: "SOL-USD", XRP: "XRP-USD", DOGE: "DOGE-USD",
   XAU: "GC=F", SILVER: "SI=F", CRUDE: "CL=F", NATGAS: "NG=F",
@@ -121,8 +122,18 @@ export default function StockDashboard() {
     try {
       const ysym = resolveSymbol(sym.toUpperCase());
       const res = await fetch(`${API_BASE}/stock/${encodeURIComponent(ysym)}?period=3mo`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.detail || json?.error || `Request failed with status ${res.status}`);
+      // The backend sometimes answers with plain text (e.g. "Internal Server Error"), so don't assume JSON
+      const text = await res.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(text);
+      } catch {}
+      if (!res.ok || !json) {
+        throw new Error(
+          json?.detail || json?.error ||
+            (res.status >= 500 ? `The server couldn't analyze ${ysym} right now.` : `No data for ${ysym}`)
+        );
+      }
       setRaw(json);
       setView(normalize(json, ysym));
     } catch (e) {
