@@ -176,7 +176,7 @@ export default function StockDashboard() {
                         }`}
                       >
                         {view.change != null
-                          ? `${up ? "▲ +" : "▼ "}${view.change.toFixed(2)}%`
+                          ? `${up ? "▲ +" : "▼ "}${Math.abs(view.change).toFixed(2)}%`
                           : "—"}
                         <span className="text-[#71717a] font-normal">({view.symbol})</span>
                       </p>
