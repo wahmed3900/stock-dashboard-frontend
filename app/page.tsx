@@ -71,7 +71,41 @@ function normalize(json: any, symbol: string): View {
   };
 }
 
-const money = (n?: number) => (n != null ? `$${n.toFixed(2)}` : "—");
+// The 7 asset classes, each with a one-click example in Yahoo Finance format
+const ASSET_CLASSES = [
+  { label: "Stocks", symbol: "AAPL" },
+  { label: "ETFs", symbol: "SPY" },
+  { label: "Indices", symbol: "^GSPC" },
+  { label: "Forex", symbol: "EURUSD=X" },
+  { label: "Crypto", symbol: "BTC-USD" },
+  { label: "Commodities", symbol: "GC=F" },
+  { label: "Bonds", symbol: "^TNX" },
+];
+
+// Plain words people type -> the Yahoo Finance symbol for that asset
+const ALIASES: Record<string, string> = {
+  EUR: "EURUSD=X", GBP: "GBPUSD=X", JPY: "JPY=X", CAD: "CAD=X", AUD: "AUDUSD=X",
+  CHF: "CHF=X", INR: "INR=X", CNY: "CNY=X", MXN: "MXN=X",
+  BTC: "BTC-USD", BITCOIN: "BTC-USD", ETH: "ETH-USD", ETHEREUM: "ETH-USD",
+  SOL: "SOL-USD", SOLANA: "SOL-USD", XRP: "XRP-USD", DOGE: "DOGE-USD",
+  XAU: "GC=F", SILVER: "SI=F", CRUDE: "CL=F", NATGAS: "NG=F",
+  SP500: "^GSPC", SPX: "^GSPC", NASDAQ: "^IXIC", DOWJONES: "^DJI", TSX: "^GSPTSE", VIX: "^VIX",
+  "10Y": "^TNX", "30Y": "^TYX", "5Y": "^FVX",
+};
+
+const resolveSymbol = (s: string) => ALIASES[s] ?? s;
+
+const YIELDS = ["^TNX", "^TYX", "^FVX", "^IRX"];
+
+// Format a price the way that asset is quoted
+function fmt(n: number | undefined, sym: string): string {
+  if (n == null) return "—";
+  if (YIELDS.includes(sym)) return `${n.toFixed(2)}%`;
+  if (sym.endsWith("=X")) return n.toFixed(4);
+  if (sym.startsWith("^")) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (n < 1) return `$${n.toFixed(4)}`;
+  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export default function StockDashboard() {
   const [symbol, setSymbol] = useState("AAPL");
@@ -85,11 +119,12 @@ export default function StockDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/stock/${sym.toUpperCase()}?period=3mo`);
+      const ysym = resolveSymbol(sym.toUpperCase());
+      const res = await fetch(`${API_BASE}/stock/${encodeURIComponent(ysym)}?period=3mo`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.detail || json?.error || `Request failed with status ${res.status}`);
       setRaw(json);
-      setView(normalize(json, sym.toUpperCase()));
+      setView(normalize(json, ysym));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load this ticker.");
       setView(null);
@@ -135,7 +170,7 @@ export default function StockDashboard() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Search ticker (e.g. AAPL)"
+              placeholder="AAPL, BTC, EUR, SP500…"
               aria-label="Ticker symbol"
               className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 w-40 sm:w-48"
             />
@@ -149,9 +184,32 @@ export default function StockDashboard() {
         </header>
 
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {ASSET_CLASSES.map((a) => {
+              const active = resolveSymbol(symbol) === a.symbol;
+              return (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => {
+                    setInput(a.symbol);
+                    setSymbol(a.symbol);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs transition focus:outline-none focus:ring-2 focus:ring-zinc-400 ${
+                    active
+                      ? "border-white bg-white text-black"
+                      : "border-[#27272a] text-[#a1a1aa] hover:border-zinc-500 hover:text-white"
+                  }`}
+                >
+                  {a.label} <span className={active ? "text-zinc-600" : "text-[#52525b]"}>{a.symbol}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
-              {error}<br />Try a US ticker like AAPL, or add the exchange for other markets, e.g. SHOP.TO for Toronto.
+              {error}<br />Try one of the examples above, a ticker like AAPL, or add the exchange for other markets, e.g. SHOP.TO for Toronto.
             </div>
           )}
 
@@ -168,7 +226,7 @@ export default function StockDashboard() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <h2 className="text-3xl font-bold tracking-tight text-white tabular-nums">
-                        {money(view.price)}
+                        {fmt(view.price, view.symbol)}
                       </h2>
                       <p
                         className={`text-sm font-medium flex items-center gap-1 tabular-nums ${
@@ -211,10 +269,10 @@ export default function StockDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Metric label="RSI (14)" value={view.rsi != null ? view.rsi.toFixed(1) : "—"}
                   tone={view.rsi == null ? "" : view.rsi >= 70 ? "text-rose-500" : view.rsi <= 30 ? "text-emerald-400" : ""} />
-                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(2) : "Not enough data"}
+                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(Math.abs(view.macd) < 1 ? 4 : 2) : "Not enough data"}
                   tone={view.macdHist == null ? "" : view.macdHist >= 0 ? "text-emerald-400" : "text-rose-500"} />
-                <Metric label="Upper band" value={money(view.upper)} tone="text-[#f43f5e]" />
-                <Metric label="Lower band" value={money(view.lower)} tone="text-emerald-400" />
+                <Metric label="Upper band" value={fmt(view.upper, view.symbol)} tone="text-[#f43f5e]" />
+                <Metric label="Lower band" value={fmt(view.lower, view.symbol)} tone="text-emerald-400" />
               </div>
 
               {missing && (
