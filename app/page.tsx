@@ -112,7 +112,7 @@ export default function StockDashboard() {
 
   const up = (view?.change ?? 0) >= 0;
   const missing =
-    view && [view.price, view.rsi, view.macd, view.upper, view.lower].some((v) => v == null);
+    view && [view.price, view.rsi, view.upper, view.lower].some((v) => v == null);
 
   return (
     <div className="flex min-h-screen bg-[#09090b] text-[#f4f4f5] font-sans antialiased">
@@ -211,7 +211,7 @@ export default function StockDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Metric label="RSI (14)" value={view.rsi != null ? view.rsi.toFixed(1) : "—"}
                   tone={view.rsi == null ? "" : view.rsi >= 70 ? "text-rose-500" : view.rsi <= 30 ? "text-emerald-400" : ""} />
-                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(2) : "—"}
+                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(2) : "Not enough data"}
                   tone={view.macdHist == null ? "" : view.macdHist >= 0 ? "text-emerald-400" : "text-rose-500"} />
                 <Metric label="Upper band" value={money(view.upper)} tone="text-[#f43f5e]" />
                 <Metric label="Lower band" value={money(view.lower)} tone="text-emerald-400" />
