@@ -85,7 +85,7 @@ export default function StockDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/stock/${sym.toUpperCase()}`);
+      const res = await fetch(`${API_BASE}/stock/${sym.toUpperCase()}?period=3mo`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.detail || json?.error || `Request failed with status ${res.status}`);
       setRaw(json);
