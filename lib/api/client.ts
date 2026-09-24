@@ -1,6 +1,6 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ??
-  "https://stock-dashboard-backend-634072894074.us-west4.run.app";
+  "/api/backend";
   
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -31,12 +31,12 @@ export const apiClient = {
     timeframe?: string;
     include_ai?: boolean;
   }) =>
-    request<any>("/api/chart/hybrid", {
+    request<any>("/chart/hybrid", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  stock: (symbol: string) => request<any>(`/api/stock/${symbol}`),
+  stock: (symbol: string) => request<any>(`/stock/${symbol}`),
 
-  health: () => request<any>("/api/health"),
+  health: () => request<any>("/health"),
 };
