@@ -151,7 +151,7 @@ export default function StockDashboard() {
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
-              {error} Check the ticker and try again.
+              {error}<br />Try a US ticker like AAPL, or add the exchange for other markets, e.g. SHOP.TO for Toronto.
             </div>
           )}
 
