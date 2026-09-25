@@ -11,11 +11,11 @@ export default function AuthButton() {
 
   if (session) {
     return (
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-white/60">{session.user?.email}</span>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="min-w-0 truncate text-xs text-white/60" title={session.user?.email ?? ""}>{session.user?.email}</span>
         <button
           onClick={() => signOut()}
-          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60 transition hover:border-white/20 hover:text-white"
+          className="shrink-0 whitespace-nowrap rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60 transition hover:border-white/20 hover:text-white"
         >
           Sign out
         </button>
@@ -26,7 +26,7 @@ export default function AuthButton() {
   return (
     <button
       onClick={() => signIn("google")}
-      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/80 transition hover:border-white/20 hover:bg-white/[0.06]"
+      className="whitespace-nowrap rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/80 transition hover:border-white/20 hover:bg-white/[0.06]"
     >
       Sign in with Google
     </button>

@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AuthButton from "@/components/AuthButton";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import AppShell from "@/components/AppShell";
+import { resolveSymbol, fmtPrice as fmt } from "@/lib/symbols";
+import { api, ApiError } from "@/lib/appApi";
 
-const API_BASE = "/api/backend";
+// Goes through the signed-in bridge so paying users get their plan's features
+const API_BASE = "/api/app";
 
 type View = {
   symbol: string;
@@ -16,6 +22,7 @@ type View = {
   upper?: number;
   lower?: number;
   insight?: string;
+  aiLocked?: boolean;
 };
 
 // Accept numbers or numeric strings; return the first usable value.
@@ -68,6 +75,7 @@ function normalize(json: any, symbol: string): View {
     upper: num(boll.upper, boll.upper_band, ti.bb_upper, ti.upper_band, root.bb_upper),
     lower: num(boll.lower, boll.lower_band, ti.bb_lower, ti.lower_band, root.bb_lower),
     insight,
+    aiLocked: !!root.ai_locked,
   };
 }
 
@@ -82,32 +90,6 @@ const ASSET_CLASSES = [
   { label: "Bonds", symbol: "^TNX" },
 ];
 
-// Plain words people type -> the Yahoo Finance symbol for that asset
-const ALIASES: Record<string, string> = {
-  EUR: "EURUSD=X", GBP: "GBPUSD=X", JPY: "JPY=X", CAD: "CAD=X", AUD: "AUDUSD=X",
-  CHF: "CHF=X", INR: "INR=X", CNY: "CNY=X", MXN: "MXN=X",
-  USD: "DX-Y.NYB", DXY: "DX-Y.NYB",
-  BTC: "BTC-USD", BITCOIN: "BTC-USD", ETH: "ETH-USD", ETHEREUM: "ETH-USD",
-  SOL: "SOL-USD", SOLANA: "SOL-USD", XRP: "XRP-USD", DOGE: "DOGE-USD",
-  XAU: "GC=F", SILVER: "SI=F", CRUDE: "CL=F", NATGAS: "NG=F",
-  SP500: "^GSPC", SPX: "^GSPC", NASDAQ: "^IXIC", DOWJONES: "^DJI", TSX: "^GSPTSE", VIX: "^VIX",
-  "10Y": "^TNX", "30Y": "^TYX", "5Y": "^FVX",
-};
-
-const resolveSymbol = (s: string) => ALIASES[s] ?? s;
-
-const YIELDS = ["^TNX", "^TYX", "^FVX", "^IRX"];
-
-// Format a price the way that asset is quoted
-function fmt(n: number | undefined, sym: string): string {
-  if (n == null) return "—";
-  if (YIELDS.includes(sym)) return `${n.toFixed(2)}%`;
-  if (sym.endsWith("=X")) return n.toFixed(4);
-  if (sym.startsWith("^")) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (n < 1) return `$${n.toFixed(4)}`;
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export default function StockDashboard() {
   const [symbol, setSymbol] = useState("AAPL");
   const [input, setInput] = useState("AAPL");
@@ -115,12 +97,36 @@ export default function StockDashboard() {
   const [raw, setRaw] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [watchMsg, setWatchMsg] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Open a symbol straight from a link, e.g. /?symbol=TSLA (used by the watchlist)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("symbol");
+    if (q) {
+      setInput(q.toUpperCase());
+      setSymbol(q.toUpperCase());
+    }
+  }, []);
+
+  async function addToWatchlist() {
+    if (!view) return;
+    setWatchMsg(null);
+    try {
+      await api("watchlist", { method: "POST", body: { symbol: view.symbol } });
+      setWatchMsg("Added to your watchlist");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return signIn("google");
+      if (e instanceof ApiError && e.status === 402) return router.push("/pricing");
+      setWatchMsg(e instanceof Error ? e.message : "Couldn't add it");
+    }
+  }
 
   async function load(sym: string) {
     setLoading(true);
     setError(null);
     try {
-      const ysym = resolveSymbol(sym.toUpperCase());
+      const ysym = resolveSymbol(sym);
       const res = await fetch(`${API_BASE}/stock/${encodeURIComponent(ysym)}?period=3mo`);
       // The backend sometimes answers with plain text (e.g. "Internal Server Error"), so don't assume JSON
       const text = await res.text();
@@ -161,26 +167,7 @@ export default function StockDashboard() {
     view && [view.price, view.rsi, view.upper, view.lower].some((v) => v == null);
 
   return (
-    <div className="flex min-h-screen bg-[#09090b] text-[#f4f4f5] font-sans antialiased">
-      <aside className="hidden md:flex flex-col w-64 border-r border-[#1e1e24] p-6 space-y-6">
-        <span className="px-2 text-xl font-bold tracking-tight text-white">StockAI</span>
-        <nav className="flex-1 space-y-1">
-          <a href="/" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-[#18181b] text-white">
-            Dashboard
-          </a>
-        </nav>
-        <div className="pt-4 border-t border-[#1e1e24] px-2">
-          <AuthButton />
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile bar: the sidebar is hidden below md, so brand + sign-in live here on phones */}
-        <div className="flex md:hidden h-14 items-center justify-between px-4 border-b border-[#1e1e24]">
-          <span className="text-lg font-bold tracking-tight text-white">StockAI</span>
-          <AuthButton />
-        </div>
-
+    <AppShell>
         <header className="flex flex-wrap min-h-16 items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#1e1e24]">
           <span className="text-sm font-medium text-[#71717a]">Market data · may be delayed</span>
           <form onSubmit={submit} className="flex items-center space-x-3">
@@ -256,17 +243,36 @@ export default function StockDashboard() {
                         <span className="text-[#71717a] font-normal">({view.symbol})</span>
                       </p>
                     </div>
-                    {view.source && (
-                      <span className="bg-[#14532d] text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
-                        {view.source}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-2">
+                      {view.source && (
+                        <span className="bg-[#14532d] text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                          {view.source}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={addToWatchlist}
+                        className="rounded-lg border border-[#27272a] px-3 py-1 text-xs text-[#d4d4d8] hover:border-zinc-500 hover:text-white"
+                      >
+                        ☆ Add to watchlist
+                      </button>
+                      {watchMsg && <span className="text-xs text-[#a1a1aa]">{watchMsg}</span>}
+                    </div>
                   </div>
                   <div className="mt-6 flex-1 rounded-xl bg-[#18181b] border border-[#27272a] p-4 text-sm leading-relaxed text-[#d4d4d8]">
-                    <span className="font-semibold text-white">AI summary: </span>
+                    <span className="font-semibold text-white">
+                      {view.aiLocked ? "Automated reading: " : "AI summary: "}
+                    </span>
                     {view.insight ?? "No analysis returned for this ticker yet."}
+                    {view.aiLocked && (
+                      <p className="mt-3 text-xs text-[#a1a1aa]">
+                        Want an AI-written summary instead?{" "}
+                        <Link href="/pricing" className="text-white underline">It&apos;s included in Starter</Link>.
+                      </p>
+                    )}
                     <p className="mt-3 text-xs text-[#71717a]">
-                      Generated by AI from technical indicators. It can be wrong. Not financial advice.
+                      {view.aiLocked ? "Generated automatically from technical indicators." : "Generated by AI from technical indicators. It can be wrong."}{" "}
+                      Not financial advice.
                     </p>
                   </div>
                 </div>
@@ -307,18 +313,7 @@ export default function StockDashboard() {
           )}
         </main>
 
-        <footer className="border-t border-[#1e1e24] px-4 sm:px-6 py-4 text-xs leading-relaxed text-[#71717a]">
-          StockAI is for educational and informational purposes only and is not investment, financial or trading
-          advice. Market data comes from third-party sources, may be delayed or inaccurate, and is provided as-is.
-          AI-generated summaries can be wrong. Do your own research and consider speaking with a licensed financial
-          advisor before making investment decisions.
-          <nav className="mt-3 flex flex-wrap gap-4">
-            <a href="/privacy" className="hover:text-white">Privacy Policy</a>
-            <a href="/terms" className="hover:text-white">Terms of Service</a>
-          </nav>
-        </footer>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
