@@ -277,7 +277,7 @@ export default function StockDashboard() {
                   <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-zinc-900">
                     <iframe
                       className="h-full w-full"
-                      src="https://www.youtube.com/embed/gQpinwa-Gkk"
+                      src="https://www.youtube-nocookie.com/embed/gQpinwa-Gkk"
                       title="StockAI demo"
                       allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -312,6 +312,10 @@ export default function StockDashboard() {
           advice. Market data comes from third-party sources, may be delayed or inaccurate, and is provided as-is.
           AI-generated summaries can be wrong. Do your own research and consider speaking with a licensed financial
           advisor before making investment decisions.
+          <nav className="mt-3 flex flex-wrap gap-4">
+            <a href="/privacy" className="hover:text-white">Privacy Policy</a>
+            <a href="/terms" className="hover:text-white">Terms of Service</a>
+          </nav>
         </footer>
       </div>
     </div>
