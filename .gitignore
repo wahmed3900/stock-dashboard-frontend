@@ -10,3 +10,4 @@ node_modules/
 ≈
 .env.local
 StockDash-Board/
+next-env.d.ts
