@@ -8,7 +8,7 @@ export const LEGAL = {
   effectiveDate: "September 25, 2026",
   siteUrl: "https://stock-dashboard-frontend-one.vercel.app",
   plans: [
-    { name: "Starter", price: "$99 per month" },
-    { name: "Premium", price: "$199 per month" },
+    { name: "Starter", price: "$12 per month" },
+    { name: "Premium", price: "$50 per month" },
   ],
 };
