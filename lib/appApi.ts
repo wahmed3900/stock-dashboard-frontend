@@ -36,5 +36,6 @@ export type Me = {
   phone_verified: boolean;
   sms_available: boolean;
   sms_daily_limit: number;
+  trial_eligible?: boolean;
   limits: { watchlist: number; alerts: number };
 };

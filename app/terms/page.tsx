@@ -55,6 +55,7 @@ export default function TermsPage() {
           , plus any applicable taxes. Features included in each plan are described in the app and may change over time.
         </li>
         <li>Paid plans are billed in advance through Stripe and <strong className="text-white">renew automatically each month</strong> until you cancel. By subscribing, you authorize us to charge your payment method on each renewal.</li>
+        <li>New subscribers may be offered a paid trial: a one-time <strong className="text-white">$5 fee for 5 days</strong> of access to the plan they choose. Unless you cancel before the trial ends, the plan&apos;s monthly price is charged automatically when the trial ends and then renews each month. One trial per account.</li>
         <li>You can cancel at any time. Cancellation takes effect at the end of your current billing period, and you keep access until then.</li>
         <li>Except where required by law, payments are non-refundable, and we do not provide refunds or credits for partial months or unused features. If you believe you were charged in error, contact {mail} within 30 days.</li>
         <li>We may change prices. We will tell you at least 30 days before a price change affects your subscription, and you can cancel before it takes effect.</li>

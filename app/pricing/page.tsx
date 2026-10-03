@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { api, Me } from "@/lib/appApi";
 
 type Plan = { id: string; name: string; price: number; interval: string; tier: string };
+type Trial = { days: number; fee: number; currency: string } | null;
 
 const TIERS = [
   {
@@ -41,6 +42,7 @@ const TIERS = [
 export default function PricingPage() {
   const { status } = useSession();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [trial, setTrial] = useState<Trial>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,12 @@ export default function PricingPage() {
 
   useEffect(() => {
     setCheckout(new URLSearchParams(window.location.search).get("checkout"));
-    api<{ plans: Plan[] }>("plans").then((r) => setPlans(r.plans)).catch(() => {});
+    api<{ plans: Plan[]; trial?: Trial }>("plans")
+      .then((r) => {
+        setPlans(r.plans);
+        setTrial(r.trial ?? null);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -58,6 +65,11 @@ export default function PricingPage() {
   const priceOf = (tier: string) => plans.find((p) => p.tier === tier);
   const current = me?.tier ?? "free";
   const rank: Record<string, number> = { free: 0, basic: 1, pro: 2, premium: 3 };
+  // Trial offer: shown to signed-out visitors, and to signed-in free users who haven't used a trial yet.
+  // The backend makes the final call at checkout, so this only controls what we display.
+  const offerTrial =
+    trial != null && current === "free" && (status !== "authenticated" || me?.trial_eligible === true);
+  const trialFee = trial ? `$${(trial.fee / 100).toFixed(0)}` : "";
 
   async function choose(tier: string) {
     setError(null);
@@ -121,6 +133,11 @@ export default function PricingPage() {
                   {t.key === "free" ? "$0" : plan ? `$${(plan.price / 100).toFixed(0)}` : "…"}
                   <span className="text-sm font-normal text-[#71717a]"> / month</span>
                 </p>
+                {t.key !== "free" && offerTrial && plan && (
+                  <p className="mt-1 text-sm font-medium text-emerald-400">
+                    Try {trial!.days} days for {trialFee}, then ${(plan.price / 100).toFixed(0)}/month
+                  </p>
+                )}
                 <ul className="mt-5 flex-1 space-y-2 text-sm text-[#d4d4d8]">
                   {t.features.map((f) => (
                     <li key={f} className="flex gap-2">
@@ -152,7 +169,15 @@ export default function PricingPage() {
                       disabled={busy !== null}
                       className={`w-full rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 ${highlight ? "bg-amber-300 text-black hover:bg-amber-200" : "bg-white text-black hover:bg-zinc-200"}`}
                     >
-                      {busy === t.key ? "Opening checkout…" : status === "authenticated" ? `Get ${t.title}` : `Sign in to get ${t.title}`}
+                      {busy === t.key
+                        ? "Opening checkout…"
+                        : offerTrial
+                          ? status === "authenticated"
+                            ? `Try ${trial!.days} days for ${trialFee}`
+                            : `Sign in to try ${trial!.days} days for ${trialFee}`
+                          : status === "authenticated"
+                            ? `Get ${t.title}`
+                            : `Sign in to get ${t.title}`}
                     </button>
                   )}
                 </div>
@@ -163,7 +188,14 @@ export default function PricingPage() {
 
         <p className="text-xs text-[#71717a]">
           Payments are handled securely by Stripe. Plans renew monthly until you cancel; cancelling keeps access until the end
-          of the billing period. See the <Link href="/terms" className="underline">Terms of Service</Link>.
+          of the billing period.
+          {trial && (
+            <>
+              {" "}New subscribers can start with a {trial.days}-day trial for {trialFee}, charged today. Unless you cancel before
+              the trial ends, your plan&apos;s monthly price starts automatically. One trial per account.
+            </>
+          )}{" "}
+          See the <Link href="/terms" className="underline">Terms of Service</Link>.
         </p>
       </main>
     </AppShell>
