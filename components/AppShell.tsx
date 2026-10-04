@@ -8,6 +8,8 @@ const NAV = [
   { href: "/", label: "Dashboard" },
   { href: "/watchlist", label: "Watchlist", premium: true },
   { href: "/alerts", label: "Alerts", premium: true },
+  { href: "/paper-trading", label: "Paper Trading", premium: true },
+  { href: "/live-trading", label: "Live Trading", premium: true },
   { href: "/pricing", label: "Pricing" },
 ];
 

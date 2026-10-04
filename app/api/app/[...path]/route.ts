@@ -20,6 +20,25 @@ const ALLOWED: { re: RegExp; methods: string[]; publicOk?: boolean }[] = [
   { re: /^alerts\/[a-f0-9]{24}$/, methods: ["DELETE"] },
   { re: /^create-checkout-session$/, methods: ["POST"] },
   { re: /^billing-portal$/, methods: ["POST"] },
+  // Paper trading (Bot 1)
+  { re: /^paper\/portfolio\/[^/]+$/, methods: ["GET"] },
+  { re: /^paper\/positions\/[^/]+$/, methods: ["GET"] },
+  { re: /^paper\/positions\/open$/, methods: ["POST"] },
+  { re: /^paper\/positions\/[a-f0-9]{24}\/close$/, methods: ["POST"] },
+  { re: /^paper\/trades\/[^/]+$/, methods: ["GET"] },
+  { re: /^paper\/bot\/run$/, methods: ["POST"] },
+  { re: /^paper\/account\/[^/]+\/reset$/, methods: ["POST"] },
+  // Live trading (Bot 2)
+  { re: /^live\/account$/, methods: ["GET"] },
+  { re: /^live\/positions$/, methods: ["GET"] },
+  { re: /^live\/orders$/, methods: ["GET"] },
+  { re: /^live\/order$/, methods: ["POST"] },
+  { re: /^live\/order\/[^/]+$/, methods: ["DELETE"] },
+  { re: /^live\/orders\/all$/, methods: ["DELETE"] },
+  { re: /^live\/bot2\/config\/[^/]+$/, methods: ["GET", "PUT"] },
+  { re: /^live\/bot2\/run\/[^/]+$/, methods: ["POST"] },
+  { re: /^live\/bot2\/runs\/[^/]+$/, methods: ["GET"] },
+  { re: /^live\/bot2\/liquidate\/[^/]+$/, methods: ["POST"] },
 ];
 
 async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
