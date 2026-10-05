@@ -19,14 +19,15 @@ export const revalidate = 60;
 
 const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "";
 
-export async function GET(
+export async function GET
   _req: NextRequest,
-  { params }: { params: { symbol: string } }
+{ params }: { params: Promise<{ symbol: string }> }
 ) {
-  const symbol = params.symbol.toUpperCase();
+    const { symbol: rawSymbol } = await params;
+    const symbol = rawSymbol.toUpperCase();
 
-  try {
-    const upstream = await fetch(`${BACKEND_BASE}/api/analyze/${symbol}`, {
+    try {
+          const upstream = await fetch(`${BACKEND_BASE}/api/analyze/${symbol}`, {
       // Tell Next.js fetch cache to revalidate every 60 s as well
       next: { revalidate: 60 },
     });
