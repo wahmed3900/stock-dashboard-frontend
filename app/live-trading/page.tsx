@@ -15,7 +15,7 @@ type Bot2Config = {
   daily_loss_limit_pct: number;
   rsi_buy_max: number;
   rsi_sell_min: number;
-  require_macd: boolean;
+  require_macd: boolean
   stop_loss_atr: number;
   take_profit_atr: number;
   watchlist: string[];
@@ -138,7 +138,7 @@ export default function LiveTradingPage() {
   };
 
   if (status === "loading") return <AppShell><div className="p-8 text-center text-gray-400">Loading…</div></AppShell>;
-  if (status !== "authenticated") return <AppShell><SignInCard /></AppShell>;
+  if (status !== "authenticated") return <AppShell><SignInCard what="live trading" /></AppShell>;
 
   return (
     <AppShell>
