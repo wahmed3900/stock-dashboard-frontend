@@ -6,6 +6,7 @@ import AuthButton from "@/components/AuthButton";
 
 const NAV = [
   { href: "/", label: "Dashboard" },
+  { href: "/stock", label: "Markets" },
   { href: "/watchlist", label: "Watchlist", premium: true },
   { href: "/alerts", label: "Alerts", premium: true },
   { href: "/paper-trading", label: "Paper Trading", premium: true },
