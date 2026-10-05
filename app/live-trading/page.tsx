@@ -138,7 +138,7 @@ export default function LiveTradingPage() {
   };
 
   if (status === "loading") return <AppShell><div className="p-8 text-center text-gray-400">Loading…</div></AppShell>;
-  if (status !== "authenticated") return <AppShell><SignInCard /></AppShell>;
+  if (status !== "authenticated") return <AppShell><SignInCard what="live trading" /></AppShell>;
 
   return (
     <AppShell>
