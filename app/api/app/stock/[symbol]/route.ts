@@ -19,7 +19,7 @@ export const revalidate = 60;
 
 const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "";
 
-export async function GET
+export async function GET (
   _req: NextRequest,
 { params }: { params: Promise<{ symbol: string }> }
 ) {
