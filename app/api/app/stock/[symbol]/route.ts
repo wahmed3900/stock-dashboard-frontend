@@ -1,56 +1,73 @@
 /**
  * app/api/app/stock/[symbol]/route.ts
- * App Router version — drop at that path.
- *
- * Caches each symbol at the Vercel edge for 60 s.
- * Stale responses are served for up to 30 s while revalidating in the background,
- * so users never wait for a cold fetch.
- *
- * Data: Yahoo Finance via yfinance (proxied through your Cloud Run backend)
- * — adjust BACKEND_BASE if your analysis endpoint lives elsewhere.
+ * Proxies one symbol to the Cloud Run backend (/api/stock/:symbol), cached at
+ * Vercel's edge for 60 s with 30 s stale-while-revalidate.
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
-// ── Cache control ──────────────────────────────────────────────────────────
-// This tells Vercel's edge to cache the response for 60 seconds.
-// Remove or lower if you need fresher data.
 export const revalidate = 60;
 
-const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "";
+const BACKEND_BASE = (
+  process.env.BACKEND_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://stock-dashboard-backend-634072894074.us-west4.run.app"
+).replace(/\/$/, "");
+
+const SYMBOL_RE = /^[A-Z0-9^][A-Z0-9.\-=^]{0,19}$/;
+const PERIODS = new Set(["1mo", "3mo", "6mo", "1y", "2y", "5y"]);
+const TIMEOUT_MS = 15_000;
+const CACHE_OK = "public, s-maxage=60, stale-while-revalidate=30";
+
+function fail(status: number, error: string) {
+  return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
+}
 
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: { symbol: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
-  const symbol = params.symbol.toUpperCase();
-
+  const { symbol: raw } = await params;
+  let symbol: string;
   try {
-    const upstream = await fetch(`${BACKEND_BASE}/api/analyze/${symbol}`, {
-      // Tell Next.js fetch cache to revalidate every 60 s as well
-      next: { revalidate: 60 },
-    });
-
-    if (!upstream.ok) {
-      return NextResponse.json(
-        { error: `Upstream error: ${upstream.status}` },
-        { status: upstream.status }
-      );
-    }
-
-    const data = await upstream.json();
-
-    return NextResponse.json(data, {
-      status: 200,
-      headers: {
-        // Edge CDN caches for 60 s; serves stale for up to 30 s while refreshing
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message ?? "Internal server error" },
-      { status: 500 }
-    );
+    symbol = decodeURIComponent(raw ?? "").trim().toUpperCase();
+  } catch {
+    return fail(400, "Invalid symbol.");
   }
+  if (!SYMBOL_RE.test(symbol)) return fail(400, "Invalid symbol.");
+
+  const period = req.nextUrl.searchParams.get("period") ?? "3mo";
+  if (!PERIODS.has(period)) return fail(400, `Unsupported period. Use one of: ${[...PERIODS].join(", ")}.`);
+
+  const path = encodeURIComponent(symbol).replace(/%5E/gi, "^").replace(/%3D/gi, "=");
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${BACKEND_BASE}/api/stock/${path}?period=${period}`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    console.error(`[api/app/stock] ${timedOut ? "timeout" : "network error"} for ${symbol}`, err);
+    return timedOut
+      ? fail(504, "Market data took too long to respond. Please try again.")
+      : fail(502, "Couldn't reach the market data service.");
+  }
+
+  if (upstream.status === 404) return fail(404, `No data found for ${symbol}.`);
+  if (upstream.status === 400 || upstream.status === 422) return fail(400, `Invalid request for ${symbol}.`);
+  if (upstream.status === 429) return fail(429, "Too many requests. Please wait a moment and try again.");
+  if (!upstream.ok) {
+    console.error(`[api/app/stock] backend returned ${upstream.status} for ${symbol}`);
+    return fail(502, "Market data is temporarily unavailable.");
+  }
+
+  let data: unknown;
+  try {
+    data = await upstream.json();
+  } catch {
+    return fail(502, "Market data service returned an unreadable response.");
+  }
+  return NextResponse.json(data, { headers: { "Cache-Control": CACHE_OK } });
 }
