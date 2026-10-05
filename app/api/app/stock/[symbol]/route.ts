@@ -1,57 +1,89 @@
 /**
  * app/api/app/stock/[symbol]/route.ts
- * App Router version — drop at that path.
  *
- * Caches each symbol at the Vercel edge for 60 s.
- * Stale responses are served for up to 30 s while revalidating in the background,
- * so users never wait for a cold fetch.
+ * Proxies one symbol to the Cloud Run backend (/api/stock/:symbol) and caches the
+ * result at Vercel's edge for 60 s, serving stale data for up to 30 s more while it
+ * refreshes in the background, so users rarely wait on a cold fetch.
  *
- * Data: Yahoo Finance via yfinance (proxied through your Cloud Run backend)
- * — adjust BACKEND_BASE if your analysis endpoint lives elsewhere.
+ * Usage: /api/app/stock/AAPL, /api/app/stock/BTC-USD?period=6mo, /api/app/stock/%5EGSPC
  */
-
 import { NextRequest, NextResponse } from "next/server";
 
-// ── Cache control ──────────────────────────────────────────────────────────
-// This tells Vercel's edge to cache the response for 60 seconds.
-// Remove or lower if you need fresher data.
 export const revalidate = 60;
 
-const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "";
+const BACKEND_BASE = (
+  process.env.BACKEND_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://stock-dashboard-backend-634072894074.us-west4.run.app"
+).replace(/\/$/, "");
 
-export async function GET (
-  _req: NextRequest,
-{ params }: { params: Promise<{ symbol: string }> }
+// Letters, digits and the punctuation Yahoo uses: ^GSPC, BTC-USD, EURUSD=X, BRK.B
+const SYMBOL_RE = /^[A-Z0-9^][A-Z0-9.\-=^]{0,19}$/;
+const PERIODS = new Set(["1mo", "3mo", "6mo", "1y", "2y", "5y"]);
+const TIMEOUT_MS = 15_000;
+const CACHE_OK = "public, s-maxage=60, stale-while-revalidate=30";
+
+// Errors are never cached, so a brief outage doesn't stick around for a minute.
+function fail(status: number, error: string) {
+  return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
-    const { symbol: rawSymbol } = await params;
-    const symbol = rawSymbol.toUpperCase();
-
-    try {
-          const upstream = await fetch(`${BACKEND_BASE}/api/analyze/${symbol}`, {
-      // Tell Next.js fetch cache to revalidate every 60 s as well
-      next: { revalidate: 60 },
-    });
-
-    if (!upstream.ok) {
-      return NextResponse.json(
-        { error: `Upstream error: ${upstream.status}` },
-        { status: upstream.status }
-      );
-    }
-
-    const data = await upstream.json();
-
-    return NextResponse.json(data, {
-      status: 200,
-      headers: {
-        // Edge CDN caches for 60 s; serves stale for up to 30 s while refreshing
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message ?? "Internal server error" },
-      { status: 500 }
-    );
+  // 1. Validate the symbol
+  const { symbol: raw } = await params;
+  let symbol: string;
+  try {
+    symbol = decodeURIComponent(raw ?? "").trim().toUpperCase();
+  } catch {
+    return fail(400, "Invalid symbol.");
   }
+  if (!SYMBOL_RE.test(symbol)) return fail(400, "Invalid symbol.");
+
+  // 2. Validate the optional ?period= (defaults to 3 months)
+  const period = req.nextUrl.searchParams.get("period") ?? "3mo";
+  if (!PERIODS.has(period)) {
+    return fail(400, `Unsupported period. Use one of: ${[...PERIODS].join(", ")}.`);
+  }
+
+  // 3. Call the backend, keeping ^ and = readable the way the backend expects
+  const path = encodeURIComponent(symbol).replace(/%5E/gi, "^").replace(/%3D/gi, "=");
+  const url = `${BACKEND_BASE}/api/stock/${path}?period=${period}`;
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(url, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    console.error(`[api/app/stock] ${timedOut ? "timeout" : "network error"} for ${symbol}`, err);
+    return timedOut
+      ? fail(504, "Market data took too long to respond. Please try again.")
+      : fail(502, "Couldn't reach the market data service.");
+  }
+
+  // 4. Map backend errors to clear responses
+  if (upstream.status === 404) return fail(404, `No data found for ${symbol}.`);
+  if (upstream.status === 400 || upstream.status === 422) return fail(400, `Invalid request for ${symbol}.`);
+  if (upstream.status === 429) return fail(429, "Too many requests. Please wait a moment and try again.");
+  if (!upstream.ok) {
+    console.error(`[api/app/stock] backend returned ${upstream.status} for ${symbol}`);
+    return fail(502, "Market data is temporarily unavailable.");
+  }
+
+  // 5. Pass the data through, cached at the edge
+  let data: unknown;
+  try {
+    data = await upstream.json();
+  } catch {
+    console.error(`[api/app/stock] non-JSON response for ${symbol}`);
+    return fail(502, "Market data service returned an unreadable response.");
+  }
+
+  return NextResponse.json(data, { headers: { "Cache-Control": CACHE_OK } });
 }
