@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import DebugButton from "@/components/DebugButton";
 import { SITE_URL } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.className} bg-[#09090b] text-white antialiased`}>
         <Providers>{children}</Providers>
+        <DebugButton />
       </body>
     </html>
   );
