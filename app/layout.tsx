@@ -5,6 +5,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import DebugButton from "@/components/DebugButton";
 import ReportBugButton from "@/components/ReportBugButton";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { SITE_URL } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -21,6 +22,13 @@ export const metadata: Metadata = {
     siteName: "StockAI",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
+  icons: {
+    icon: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -30,6 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>{children}</Providers>
         <ReportBugButton />
         <DebugButton />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
