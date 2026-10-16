@@ -73,7 +73,7 @@ export default function DebugButton() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open debug menu"
-        className="fixed bottom-6 right-5 z-[9999] flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-xl shadow-lg shadow-black/40 hover:bg-slate-800"
+        className="fixed bottom-20 right-4 z-[9999] flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-xl shadow-lg shadow-black/40 hover:bg-slate-800"
       >
         🐞
       </button>
