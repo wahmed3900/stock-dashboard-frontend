@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-// Only rendered in `next dev` — never shows on the Vercel deployment.
+// Always shown in `next dev`. On the live site it only appears after opening
+// any page with ?debug=1 (remembered for the tab session; ?debug=0 turns it off).
+const DEBUG_STORAGE_KEY = "stockai-debug";
 const SUPPORT_EMAIL = "wahmed07860786@gmail.com";
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0";
 
@@ -23,11 +25,24 @@ export default function DebugButton() {
   const [info, setInfo] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [crash, setCrash] = useState(false);
+  const [enabled, setEnabled] = useState(process.env.NODE_ENV === "development");
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") return;
+    const flag = new URLSearchParams(window.location.search).get("debug");
+    try {
+      if (flag === "1") sessionStorage.setItem(DEBUG_STORAGE_KEY, "1");
+      if (flag === "0") sessionStorage.removeItem(DEBUG_STORAGE_KEY);
+      setEnabled(sessionStorage.getItem(DEBUG_STORAGE_KEY) === "1");
+    } catch {
+      setEnabled(flag === "1");
+    }
+  }, []);
 
   // Throwing during render (not in a click handler) is what reaches React error boundaries.
   if (crash) throw new Error("Test Debug Exception");
 
-  if (process.env.NODE_ENV !== "development") return null;
+  if (!enabled) return null;
 
   const copyInfo = async () => {
     try {
@@ -73,7 +88,7 @@ export default function DebugButton() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold">🛠️ Developer Debug Menu</h2>
-            <p className="mb-4 text-xs text-slate-400">Only visible in dev builds</p>
+            <p className="mb-4 text-xs text-slate-400">Hidden from normal visitors · open with ?debug=1</p>
 
             <div className="divide-y divide-slate-800">
               <MenuItem emoji="📱" label="View System Info" onClick={() => setInfo(buildDebugText())} />
