@@ -90,6 +90,19 @@ const ASSET_CLASSES = [
   { label: "Bonds", symbol: "^TNX" },
 ];
 
+const BROKERS = [
+  {
+    name: "Fidelity",
+    href: "https://www.fidelity.com/open-account/overview",
+    blurb: "Brokerage accounts, IRAs and cash management, with stocks, ETFs, mutual funds and options.",
+  },
+  {
+    name: "Charles Schwab",
+    href: "https://www.schwab.com/",
+    blurb: "Brokerage accounts and IRAs, with stocks, ETFs, options and futures.",
+  },
+];
+
 export default function StockDashboard() {
   const [symbol, setSymbol] = useState("AAPL");
   const [input, setInput] = useState("AAPL");
@@ -311,6 +324,33 @@ export default function StockDashboard() {
               )}
             </>
           )}
+
+          <section aria-labelledby="brokers-heading" className="border border-[#1e1e24] rounded-2xl p-6">
+            <h2 id="brokers-heading" className="text-lg font-semibold text-white">Open a brokerage account</h2>
+            <p className="mt-1 text-sm text-[#a1a1aa]">
+              Ready to act on what you find? Open an account directly with one of these brokers.
+            </p>
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {BROKERS.map((b) => (
+                <a
+                  key={b.name}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col rounded-xl border border-[#27272a] bg-[#18181b] p-5 transition hover:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                >
+                  <span className="text-base font-semibold text-white">{b.name}</span>
+                  <span className="mt-1 flex-1 text-sm text-[#a1a1aa]">{b.blurb}</span>
+                  <span className="mt-4 inline-flex w-fit rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black group-hover:bg-zinc-200">
+                    Open an account at {b.name} ↗
+                  </span>
+                </a>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-[#71717a]">
+              StockAI isn&apos;t affiliated with these brokers. Links open their sites. Not a recommendation.
+            </p>
+          </section>
         </main>
 
     </AppShell>
