@@ -77,6 +77,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link href="/pricing" className="hover:text-white">Pricing</Link>
             <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white">Terms of Service</Link>
+            <a
+              href="https://www.fidelity.com/open-account/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white"
+            >
+              Open a brokerage account at Fidelity ↗
+            </a>
           </nav>
         </footer>
       </div>
