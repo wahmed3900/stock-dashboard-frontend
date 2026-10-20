@@ -91,7 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               rel="noopener noreferrer"
               className="hover:text-white"
             >
-              Open a brokerage account at Schwab ↗
+              Open a brokerage account at Charles Schwab ↗
             </a>
           </nav>
         </footer>
