@@ -85,6 +85,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               Open a brokerage account at Fidelity ↗
             </a>
+            <a
+              href="https://www.schwab.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white"
+            >
+              Open a brokerage account at Schwab ↗
+            </a>
           </nav>
         </footer>
       </div>
