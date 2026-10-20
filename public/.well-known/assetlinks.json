@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.vercel.stock_dashboard_frontend_one.twa",
+      "package_name": "com.waqas0786.stockai",
       "sha256_cert_fingerprints": [
         "2A:EE:DF:D3:03:7A:84:09:27:00:B7:0D:66:5A:5C:B2:F6:AE:FE:71:07:06:54:1D:E1:60:D4:4A:42:92:D7:78"
       ]
