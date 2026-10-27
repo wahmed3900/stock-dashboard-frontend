@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AppShell from "@/components/AppShell";
+import MarketNews from "@/components/MarketNews";
 import { resolveSymbol, fmtPrice as fmt } from "@/lib/symbols";
 import { api, ApiError } from "@/lib/appApi";
 
@@ -90,6 +91,20 @@ const ASSET_CLASSES = [
   { label: "Bonds", symbol: "^TNX" },
 ];
 
+// Maps default asset-class symbols to Finnhub news categories
+const CATEGORY_MAP: Record<string, string> = {
+  "AAPL": "general",
+  "SPY": "general",
+  "^GSPC": "general",
+  "EURUSD=X": "forex",
+  "BTC-USD": "crypto",
+  "GC=F": "general",
+  "^TNX": "general",
+};
+
+// Default symbols that should show category news rather than symbol-specific news
+const DEFAULT_SYMBOLS = new Set(ASSET_CLASSES.map((a) => a.symbol));
+
 const BROKERS = [
   {
     name: "Fidelity",
@@ -150,7 +165,7 @@ export default function StockDashboard() {
       if (!res.ok || !json) {
         throw new Error(
           json?.detail || json?.error ||
-            (res.status >= 500 ? `The server couldn't analyze ${ysym} right now.` : `No data for ${ysym}`)
+          (res.status >= 500 ? `The server couldn't analyze ${ysym} right now.` : `No data for ${ysym}`)
         );
       }
       setRaw(json);
@@ -181,177 +196,182 @@ export default function StockDashboard() {
 
   return (
     <AppShell>
-        <header className="flex flex-wrap min-h-16 items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#1e1e24]">
-          <span className="text-sm font-medium text-[#71717a]">Market data · may be delayed</span>
-          <form onSubmit={submit} className="flex items-center space-x-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="AAPL, BTC, EUR, SP500…"
-              aria-label="Ticker symbol"
-              className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 w-40 sm:w-48"
-            />
-            <button
-              type="submit"
-              className="bg-white text-black text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            >
-              Analyze
-            </button>
-          </form>
-        </header>
+      <header className="flex flex-wrap min-h-16 items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#1e1e24]">
+        <span className="text-sm font-medium text-[#71717a]">Market data · may be delayed</span>
+        <form onSubmit={submit} className="flex items-center space-x-3">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="AAPL, BTC, EUR, SP500…"
+            aria-label="Ticker symbol"
+            className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 w-40 sm:w-48"
+          />
+          <button
+            type="submit"
+            className="bg-white text-black text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          >
+            Analyze
+          </button>
+        </form>
+      </header>
 
-        <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {ASSET_CLASSES.map((a) => {
-              const active = resolveSymbol(symbol) === a.symbol;
-              return (
-                <button
-                  key={a.label}
-                  type="button"
-                  onClick={() => {
-                    setInput(a.symbol);
-                    setSymbol(a.symbol);
-                  }}
-                  className={`rounded-full border px-3 py-1 text-xs transition focus:outline-none focus:ring-2 focus:ring-zinc-400 ${
-                    active
-                      ? "border-white bg-white text-black"
-                      : "border-[#27272a] text-[#a1a1aa] hover:border-zinc-500 hover:text-white"
-                  }`}
-                >
-                  {a.label} <span className={active ? "text-zinc-600" : "text-[#52525b]"}>{a.symbol}</span>
-                </button>
-              );
-            })}
+      <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
+        <div className="flex flex-wrap items-center gap-2">
+          {ASSET_CLASSES.map((a) => {
+            const active = resolveSymbol(symbol) === a.symbol;
+            return (
+              <button
+                key={a.label}
+                type="button"
+                onClick={() => {
+                  setInput(a.symbol);
+                  setSymbol(a.symbol);
+                }}
+                className={`rounded-full border px-3 py-1 text-xs transition focus:outline-none focus:ring-2 focus:ring-zinc-400 ${
+                  active
+                    ? "border-white bg-white text-black"
+                    : "border-[#27272a] text-[#a1a1aa] hover:border-zinc-500 hover:text-white"
+                }`}
+              >
+                {a.label} <span className={active ? "text-zinc-600" : "text-[#52525b]"}>{a.symbol}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
+            {error}<br />Try one of the examples above, a ticker like AAPL, or add the exchange for other markets, e.g. SHOP.TO for Toronto.
           </div>
+        )}
 
-          {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">
-              {error}<br />Try one of the examples above, a ticker like AAPL, or add the exchange for other markets, e.g. SHOP.TO for Toronto.
-            </div>
-          )}
+        {loading && !view && (
+          <div className="rounded-2xl border border-[#1e1e24] p-10 text-center text-sm text-[#71717a]">
+            Loading {symbol}…
+          </div>
+        )}
 
-          {loading && !view && (
-            <div className="rounded-2xl border border-[#1e1e24] p-10 text-center text-sm text-[#71717a]">
-              Loading {symbol}…
-            </div>
-          )}
-
-          {view && (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 border border-[#1e1e24] rounded-2xl p-6 flex flex-col">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <h2 className="text-3xl font-bold tracking-tight text-white tabular-nums">
-                        {fmt(view.price, view.symbol)}
-                      </h2>
-                      <p
-                        className={`text-sm font-medium flex items-center gap-1 tabular-nums ${
-                          up ? "text-emerald-500" : "text-rose-500"
-                        }`}
-                      >
-                        {view.change != null
-                          ? `${up ? "▲ +" : "▼ "}${Math.abs(view.change).toFixed(2)}%`
-                          : "—"}
-                        <span className="text-[#71717a] font-normal">({view.symbol})</span>
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {view.source && (
-                        <span className="bg-[#14532d] text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
-                          {view.source}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={addToWatchlist}
-                        className="rounded-lg border border-[#27272a] px-3 py-1 text-xs text-[#d4d4d8] hover:border-zinc-500 hover:text-white"
-                      >
-                        ☆ Add to watchlist
-                      </button>
-                      {watchMsg && <span className="text-xs text-[#a1a1aa]">{watchMsg}</span>}
-                    </div>
-                  </div>
-                  <div className="mt-6 flex-1 rounded-xl bg-[#18181b] border border-[#27272a] p-4 text-sm leading-relaxed text-[#d4d4d8]">
-                    <span className="font-semibold text-white">
-                      {view.aiLocked ? "Automated reading: " : "AI summary: "}
-                    </span>
-                    {view.insight ?? "No analysis returned for this ticker yet."}
-                    {view.aiLocked && (
-                      <p className="mt-3 text-xs text-[#a1a1aa]">
-                        Want an AI-written summary instead?{" "}
-                        <Link href="/pricing" className="text-white underline">It&apos;s included in Starter</Link>.
-                      </p>
-                    )}
-                    <p className="mt-3 text-xs text-[#71717a]">
-                      {view.aiLocked ? "Generated automatically from technical indicators." : "Generated by AI from technical indicators. It can be wrong."}{" "}
-                      Not financial advice.
+        {view && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 border border-[#1e1e24] rounded-2xl p-6 flex flex-col">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-3xl font-bold tracking-tight text-white tabular-nums">
+                      {fmt(view.price, view.symbol)}
+                    </h2>
+                    <p
+                      className={`text-sm font-medium flex items-center gap-1 tabular-nums ${
+                        up ? "text-emerald-500" : "text-rose-500"
+                      }`}
+                    >
+                      {view.change != null
+                        ? `${up ? "▲ +" : "▼ "}${Math.abs(view.change).toFixed(2)}%`
+                        : "—"}
+                      <span className="text-[#71717a] font-normal">({view.symbol})</span>
                     </p>
                   </div>
-                </div>
-
-                <div className="border border-[#1e1e24] rounded-2xl p-6">
-                  <h3 className="text-sm font-medium text-[#e4e4e7] mb-1">Project demo</h3>
-                  <p className="text-xs text-[#71717a] mb-4">How the analyzer works</p>
-                  <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-zinc-900">
-                    <iframe
-                      className="h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/gQpinwa-Gkk"
-                      title="StockAI demo"
-                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                  <div className="flex flex-col items-end gap-2">
+                    {view.source && (
+                      <span className="bg-[#14532d] text-emerald-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                        {view.source}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={addToWatchlist}
+                      className="rounded-lg border border-[#27272a] px-3 py-1 text-xs text-[#d4d4d8] hover:border-zinc-500 hover:text-white"
+                    >
+                      ☆ Add to watchlist
+                    </button>
+                    {watchMsg && <span className="text-xs text-[#a1a1aa]">{watchMsg}</span>}
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Metric label="RSI (14)" value={view.rsi != null ? view.rsi.toFixed(1) : "—"}
-                  tone={view.rsi == null ? "" : view.rsi >= 70 ? "text-rose-500" : view.rsi <= 30 ? "text-emerald-400" : ""} />
-                <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(Math.abs(view.macd) < 1 ? 4 : 2) : "Not enough data"}
-                  tone={view.macdHist == null ? "" : view.macdHist >= 0 ? "text-emerald-400" : "text-rose-500"} />
-                <Metric label="Upper band" value={fmt(view.upper, view.symbol)} tone="text-[#f43f5e]" />
-                <Metric label="Lower band" value={fmt(view.lower, view.symbol)} tone="text-emerald-400" />
-              </div>
-
-              {missing && (
-                <details className="rounded-xl border border-[#27272a] p-4 text-xs text-[#a1a1aa]">
-                  <summary className="cursor-pointer text-[#e4e4e7]">
-                    Some values are missing. Show the raw backend response
-                  </summary>
-                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(raw, null, 2)}</pre>
-                </details>
-              )}
-            </>
-          )}
-
-          <section aria-labelledby="brokers-heading" className="border border-[#1e1e24] rounded-2xl p-6">
-            <h2 id="brokers-heading" className="text-lg font-semibold text-white">Open a brokerage account</h2>
-            <p className="mt-1 text-sm text-[#a1a1aa]">
-              Ready to act on what you find? Open an account directly with one of these brokers.
-            </p>
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {BROKERS.map((b) => (
-                <a
-                  key={b.name}
-                  href={b.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex flex-col rounded-xl border border-[#27272a] bg-[#18181b] p-5 transition hover:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                >
-                  <span className="text-base font-semibold text-white">{b.name}</span>
-                  <span className="mt-1 flex-1 text-sm text-[#a1a1aa]">{b.blurb}</span>
-                  <span className="mt-4 inline-flex w-fit rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black group-hover:bg-zinc-200">
-                    Open an account at {b.name} ↗
+                <div className="mt-6 flex-1 rounded-xl bg-[#18181b] border border-[#27272a] p-4 text-sm leading-relaxed text-[#d4d4d8]">
+                  <span className="font-semibold text-white">
+                    {view.aiLocked ? "Automated reading: " : "AI summary: "}
                   </span>
-                </a>
-              ))}
+                  {view.insight ?? "No analysis returned for this ticker yet."}
+                  {view.aiLocked && (
+                    <p className="mt-3 text-xs text-[#a1a1aa]">
+                      Want an AI-written summary instead?{" "}
+                      <Link href="/pricing" className="text-white underline">It&apos;s included in Starter</Link>.
+                    </p>
+                  )}
+                  <p className="mt-3 text-xs text-[#71717a]">
+                    {view.aiLocked ? "Generated automatically from technical indicators." : "Generated by AI from technical indicators. It can be wrong."}{" "}
+                    Not financial advice.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border border-[#1e1e24] rounded-2xl p-6">
+                <h3 className="text-sm font-medium text-[#e4e4e7] mb-1">Project demo</h3>
+                <p className="text-xs text-[#71717a] mb-4">How the analyzer works</p>
+                <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-zinc-900">
+                  <iframe
+                    className="h-full w-full"
+                    src="https://www.youtube-nocookie.com/embed/gQpinwa-Gkk"
+                    title="StockAI demo"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
             </div>
-            <p className="mt-4 text-xs text-[#71717a]">
-              StockAI isn&apos;t affiliated with these brokers. Links open their sites. Not a recommendation.
-            </p>
-          </section>
-        </main>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Metric label="RSI (14)" value={view.rsi != null ? view.rsi.toFixed(1) : "—"}
+                tone={view.rsi == null ? "" : view.rsi >= 70 ? "text-rose-500" : view.rsi <= 30 ? "text-emerald-400" : ""} />
+              <Metric label="MACD" value={view.macd != null ? view.macd.toFixed(Math.abs(view.macd) < 1 ? 4 : 2) : "Not enough data"}
+                tone={view.macdHist == null ? "" : view.macdHist >= 0 ? "text-emerald-400" : "text-rose-500"} />
+              <Metric label="Upper band" value={fmt(view.upper, view.symbol)} tone="text-[#f43f5e]" />
+              <Metric label="Lower band" value={fmt(view.lower, view.symbol)} tone="text-emerald-400" />
+            </div>
+
+            {missing && (
+              <details className="rounded-xl border border-[#27272a] p-4 text-xs text-[#a1a1aa]">
+                <summary className="cursor-pointer text-[#e4e4e7]">
+                  Some values are missing. Show the raw backend response
+                </summary>
+                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(raw, null, 2)}</pre>
+              </details>
+            )}
+          </>
+        )}
+
+        <MarketNews
+          symbol={DEFAULT_SYMBOLS.has(symbol) ? undefined : symbol}
+          category={CATEGORY_MAP[symbol] ?? "general"}
+        />
+
+        <section aria-labelledby="brokers-heading" className="border border-[#1e1e24] rounded-2xl p-6">
+          <h2 id="brokers-heading" className="text-lg font-semibold text-white">Open a brokerage account</h2>
+          <p className="mt-1 text-sm text-[#a1a1aa]">
+            Ready to act on what you find? Open an account directly with one of these brokers.
+          </p>
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {BROKERS.map((b) => (
+              <a
+                key={b.name}
+                href={b.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col rounded-xl border border-[#27272a] bg-[#18181b] p-5 transition hover:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              >
+                <span className="text-base font-semibold text-white">{b.name}</span>
+                <span className="mt-1 flex-1 text-sm text-[#a1a1aa]">{b.blurb}</span>
+                <span className="mt-4 inline-flex w-fit rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black group-hover:bg-zinc-200">
+                  Open an account at {b.name} ↗
+                </span>
+              </a>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-[#71717a]">
+            StockAI isn&apos;t affiliated with these brokers. Links open their sites. Not a recommendation.
+          </p>
+        </section>
+      </main>
 
     </AppShell>
   );
@@ -364,4 +384,4 @@ function Metric({ label, value, tone = "" }: { label: string; value: string; ton
       <p className={`text-lg font-semibold mt-1 tabular-nums ${tone || "text-white"}`}>{value}</p>
     </div>
   )
-}
+                   }
