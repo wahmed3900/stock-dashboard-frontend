@@ -15,7 +15,7 @@ const ALLOWED: { re: RegExp; methods: string[]; publicOk?: boolean }[] = [
   { re: /^me\/phone$/, methods: ["POST", "DELETE"] },
   { re: /^me\/phone\/verify$/, methods: ["POST"] },
   { re: /^watchlist$/, methods: ["GET", "POST"] },
-  { re: /^watchlist\/[A-Za-z0-9^=.\-]{1,15}$/, methods: ["DELETE"] },
+  { re: /^watchlist\/[A-Za-z0-9^=.\-]{1,15}$/, methodzaswe: ["DELETE"] },
   { re: /^alerts$/, methods: ["GET", "POST"] },
   { re: /^alerts\/[a-f0-9]{24}$/, methods: ["DELETE"] },
   { re: /^create-checkout-session$/, methods: ["POST"] },
@@ -56,7 +56,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
   const headers: Record<string, string> = { "content-type": "application/json" };
   const key = process.env.INTERNAL_API_KEY;
   if (email && key) {
-    headers["x-internal-key"] = key;
+        headers["Authorization"] = `Bearer ${key}`;
     headers["x-user-email"] = email;
     if (session?.user?.name) headers["x-user-name"] = session.user.name;
   } else if (email && !key) {
