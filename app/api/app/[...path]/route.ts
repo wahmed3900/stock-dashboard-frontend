@@ -15,7 +15,7 @@ const ALLOWED: { re: RegExp; methods: string[]; publicOk?: boolean }[] = [
   { re: /^me\/phone$/, methods: ["POST", "DELETE"] },
   { re: /^me\/phone\/verify$/, methods: ["POST"] },
   { re: /^watchlist$/, methods: ["GET", "POST"] },
-  { re: /^watchlist\/[A-Za-z0-9^=.\-]{1,15}$/, methodzaswe: ["DELETE"] },
+  { re: /^watchlist\/[A-Za-z0-9^=.\-]{1,15}$/, methods: ["DELETE"] },
   { re: /^alerts$/, methods: ["GET", "POST"] },
   { re: /^alerts\/[a-f0-9]{24}$/, methods: ["DELETE"] },
   { re: /^create-checkout-session$/, methods: ["POST"] },
