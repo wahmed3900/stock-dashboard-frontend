@@ -5,20 +5,14 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchForm4, type Form4 } from "@/lib/sec";
+import { type Alert, sendAlerts } from "@/lib/signalEmail";
 import { signalFollows } from "@/lib/signalFollows";
-
-type Alert = { ticker: string; filings: Form4[] };
 
 function authorized(request: NextRequest): boolean {
   const expected = process.env.SIGNAL_API_KEY ?? "";
   const given = request.headers.get("x-api-key") ?? "";
   if (!expected || given.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-}
-
-/** Placeholder: step 4 replaces this with a real email. */
-async function sendAlerts(email: string, items: Alert[]): Promise<void> {
-  console.info("SIGNAL ALERT for %s: %j", email, items);
 }
 
 export async function POST(request: NextRequest) {
