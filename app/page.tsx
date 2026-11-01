@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AppShell from "@/components/AppShell";
 import MarketNews from "@/components/MarketNews";
+import InsiderFilings from "@/components/InsiderFilings";
 import { resolveSymbol, fmtPrice as fmt } from "@/lib/symbols";
 import { api, ApiError } from "@/lib/appApi";
 
@@ -328,6 +329,8 @@ export default function StockDashboard() {
               <Metric label="Upper band" value={fmt(view.upper, view.symbol)} tone="text-[#f43f5e]" />
               <Metric label="Lower band" value={fmt(view.lower, view.symbol)} tone="text-emerald-400" />
             </div>
+
+            {!view.symbol.endsWith("-USD") && <InsiderFilings ticker={view.symbol} />}
 
             {missing && (
               <details className="rounded-xl border border-[#27272a] p-4 text-xs text-[#a1a1aa]">
